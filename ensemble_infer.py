@@ -35,8 +35,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    if dist.is_available():
-        setup(0, 1)
+    # if dist.is_available():
+    #     setup(0, 1)
 
     models = args.models
 
