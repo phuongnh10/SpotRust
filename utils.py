@@ -381,7 +381,7 @@ def process_images(hypes, savename, image_orig, detected, var, gt=None, out_res=
         ali_corr = (torch.mean(var, dim=0)).cpu().numpy()
         image_orig.putalpha(255)
 
-        cmap = plt.get_cmap('cool_r')
+        cmap = plt.get_cmap('autumn_r')
         colors = cmap(confidence_mean)
         colors[:, :, -1] = thresholded
 
@@ -391,35 +391,35 @@ def process_images(hypes, savename, image_orig, detected, var, gt=None, out_res=
         ax.imshow(colors, extent=extent)
         ax.set_title('detected')
         ax.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, labelleft=False, left=False)
-        fig.savefig(str(savename + '_detected.png'))
+        fig.savefig(str(savename + '_overlay.png'))
         plt.close(fig)
 
-        fig, ax = plt.subplots()
-        corrTicks = [epi_corr.min(), epi_corr.max()]
-        eps_corr = ax.imshow(epi_corr, extent=extent, cmap='plasma')
-        ax.set_title('corrosion epistemic uncertainty')
-        cb2 = plt.colorbar(eps_corr, ax=ax, orientation='vertical', shrink=shrinkfactor, pad=0.01,
-                           label='uncertainty' , ticks=corrTicks)
-        cb2.set_label('epistemic uncertainty', labelpad=-2)
-        ax.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, labelleft=False, left=False)
-        fig.savefig(str(savename + '_corr_epistemic.png'))
-        plt.close(fig)
+        # fig, ax = plt.subplots()
+        # corrTicks = [epi_corr.min(), epi_corr.max()]
+        # eps_corr = ax.imshow(epi_corr, extent=extent, cmap='plasma')
+        # ax.set_title('corrosion epistemic uncertainty')
+        # cb2 = plt.colorbar(eps_corr, ax=ax, orientation='vertical', shrink=shrinkfactor, pad=0.01,
+        #                    label='uncertainty' , ticks=corrTicks)
+        # cb2.set_label('epistemic uncertainty', labelpad=-2)
+        # ax.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, labelleft=False, left=False)
+        # fig.savefig(str(savename + '_corr_epistemic.png'))
+        # plt.close(fig)
 
-        ali_corrTicks = [ali_corr.min(), ali_corr.max()]
-        fig, ax = plt.subplots()
-        als_corr = ax.imshow(ali_corr, extent=extent, cmap='plasma')
-        ax.set_title('aleatoric uncertainty')
-        cb3 = plt.colorbar(als_corr, ax=ax, orientation='vertical', shrink=shrinkfactor, pad=0.01,
-            ticks=ali_corrTicks)
-        cb3.set_label('uncertainty', labelpad=-2)
-        ax.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, labelleft=False, left=False)
-        fig.savefig(str(savename + '_aleatoric.png'))
-        plt.close(fig)
+        # ali_corrTicks = [ali_corr.min(), ali_corr.max()]
+        # fig, ax = plt.subplots()
+        # als_corr = ax.imshow(ali_corr, extent=extent, cmap='plasma')
+        # ax.set_title('aleatoric uncertainty')
+        # cb3 = plt.colorbar(als_corr, ax=ax, orientation='vertical', shrink=shrinkfactor, pad=0.01,
+        #     ticks=ali_corrTicks)
+        # cb3.set_label('uncertainty', labelpad=-2)
+        # ax.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, labelleft=False, left=False)
+        # fig.savefig(str(savename + '_aleatoric.png'))
+        # plt.close(fig)
 
         #save detected figure
-        colormapper = ListedColormap(['black', 'cyan'])
+        colormapper = ListedColormap(['black', 'red'])
 
-        corrosion = mpatches.Patch(color='cyan', label='corrosion', ec='black')
+        corrosion = mpatches.Patch(color='red', label='corrosion', ec='black')
         background = mpatches.Patch(color='black', label='background')
         fig, ax = plt.subplots()
         ax.imshow(thresholded, cmap=colormapper, extent=extent)
@@ -428,7 +428,7 @@ def process_images(hypes, savename, image_orig, detected, var, gt=None, out_res=
         ax.set_yticks([-1])
         ax.legend(handles=[background, corrosion], loc='lower center', bbox_to_anchor=(0.5, -0.1),
                   fontsize=8, ncol=2, handlelength=1, columnspacing=1.)
-        fig.savefig(str(savename + '_detection.png'))
+        fig.savefig(str(savename + '_segmentation.png'))
         plt.close(fig)
 
     return F_score

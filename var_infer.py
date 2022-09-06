@@ -65,9 +65,9 @@ if __name__ == '__main__':
         ]
     )
 
-    print('image file is ', args.image)
-    if is_image_file(args.image):
-        image_orig = pil_loader(args.image)
+    print('image file is ', args.image_dir)
+    if is_image_file(args.image_dir):
+        image_orig = pil_loader(args.image_dir)
     else:
         RuntimeError('image provided is not a supported image format')
     image = input_transforms(image_orig)
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
         savename = os.path.join(os.getcwd(), 'figures',
                                 str(hypes['arch']['config']), str(args.thresh),
-                                str(bayesMethod + '_' + os.path.splitext(os.path.basename(args.image))[0]))
+                                str(bayesMethod + '_' + os.path.splitext(os.path.basename(args.image_dir))[0]))
 
         os.makedirs(os.path.dirname(savename), mode=0o755, exist_ok=True)
         fscore = process_images(hypes, savename, image_orig, out, var, args.gt, input_res,

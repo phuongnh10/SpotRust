@@ -26,7 +26,7 @@ def setup(rank, world_size):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Inference on images for corrosion detection")
     parser.add_argument('--models', nargs='+', help='List of paths to directory with model file and hypes.json [required]')
-    parser.add_argument('--image', type=str, help='Path to an image to run inference on')
+    parser.add_argument('--image_dir', type=str, help='Path to an image directory to run inference on')
     parser.add_argument('--gt', type=str, help='Optional path to ground truth file, will return confusion matrix.')
     parser.add_argument('--target', type=int, default=1, help='Optional target class, default to 1')
     parser.add_argument('--out_res', nargs='+', type=int, default=None, help='Optional output resolution')
@@ -51,96 +51,101 @@ if __name__ == '__main__':
                'fold7_epoch90.pt',
                'fold8_epoch90.pt', ]
 
-    print('image file is ', args.image)
-    if is_image_file(args.image):
-        image_orig = pil_loader(args.image)
-    else:
-        RuntimeError('image provided is not a supported image format')
+    # if is_image_file(args.image_dir):
+    #     image_orig = pil_loader(args.image_dir)
+    # else:
+    #     RuntimeError('image provided is not a supported image format')
 
-    detector = []
-    out = []
-    seg = []
-    var = []
-
-    for model in models:
-        hypesfile = os.path.join(model, 'hypes.json')
-        with open(hypesfile, 'r') as f:
-            hypes = json.load(f)
-
-        image_shape = hypes['arch']['image_shape']
-        num_classes = hypes['arch']['num_classes']
-        class_colors = hypes['data']['class_colours']
-        class_labels = hypes['data']['class_labels']
-        overlay_colours = hypes['data']['overlay_colours']
-        label_colours = hypes['data']['overlay_colours']
-        batch_size = 1
-        batch_shape = [batch_size] + image_shape
-        weights_factor = hypes['data']['class_weights']
-
-        if args.out_res is not None:
-            if len(args.out_res) == 1:
-                input_res = [args.out_res[0], args.out_res[0]]
-            elif len(args.out_res) > 2:
-                print('out res must be length 2')
-                exit()
-            else:
-                input_res = args.out_res
+    for img_name in sorted(os.listdir(args.image_dir)):
+        img_path = os.path.join(args.image_dir, img_name)
+        if is_image_file(img_path):
+            image_orig = pil_loader(img_path)
         else:
-            input_res = hypes['arch']['image_shape'][1:3]
+            RuntimeError('image provided is not a supported image format:' + img_path)
 
-        input_transforms = transforms.Compose(
-            [transforms.Resize(input_res, 0),
-             transforms.ToTensor(),
-             transforms.Normalize(hypes['data']['pop_mean'], hypes['data']['pop_std0'])
-             ]
-        )
+        detector = []
+        out = []
+        seg = []
+        var = []
 
-        channels = hypes['solver']['channels']
+        for model in models:
+            hypesfile = os.path.join(model, 'hypes.json')
+            with open(hypesfile, 'r') as f:
+                hypes = json.load(f)
 
-        image = input_transforms(image_orig)
-        image = image.unsqueeze(dim=0).to(device)
+            image_shape = hypes['arch']['image_shape']
+            num_classes = hypes['arch']['num_classes']
+            class_colors = hypes['data']['class_colours']
+            class_labels = hypes['data']['class_labels']
+            overlay_colours = hypes['data']['overlay_colours']
+            label_colours = hypes['data']['overlay_colours']
+            batch_size = 1
+            batch_shape = [batch_size] + image_shape
+            weights_factor = hypes['data']['class_weights']
 
-        for modelo in modelos:
-            modelfile = os.path.join(model, modelo)
-            seg_model = HRNet(config=hypes)
+            if args.out_res is not None:
+                if len(args.out_res) == 1:
+                    input_res = [args.out_res[0], args.out_res[0]]
+                elif len(args.out_res) > 2:
+                    print('out res must be length 2')
+                    exit()
+                else:
+                    input_res = args.out_res
+            else:
+                input_res = hypes['arch']['image_shape'][1:3]
 
-            pretrained_dict = torch.load(modelfile, map_location=device)
-            if 'state_dict' in pretrained_dict:
-                pretrained_dict = pretrained_dict['state_dict']
+            input_transforms = transforms.Compose(
+                [transforms.Resize(input_res, 0),
+                transforms.ToTensor(),
+                transforms.Normalize(hypes['data']['pop_mean'], hypes['data']['pop_std0'])
+                ]
+            )
 
-            prefix = "module."
-            keys = sorted(pretrained_dict.keys())
-            for key in keys:
-                if key.startswith(prefix):
-                    newkey = key[len(prefix):]
-                    pretrained_dict[newkey] = pretrained_dict.pop(key)
-            # also strip the prefix in metadata if any.
-            if "_metadata" in pretrained_dict:
-                metadata = pretrained_dict["_metadata"]
-                for key in list(metadata.keys()):
-                    if len(key) == 0:
-                        continue
-                    newkey = key[len(prefix):]
-                    metadata[newkey] = metadata.pop(key)
-            seg_model.load_state_dict(pretrained_dict)
-            seg_model.to(device)
+            channels = hypes['solver']['channels']
 
-            with torch.no_grad():
-                outDict = seg_model(image)
-                out.append(outDict['out'].squeeze().detach())
-                var.append(outDict['logVar'].squeeze().detach())
+            image = input_transforms(image_orig)
+            image = image.unsqueeze(dim=0).to(device)
 
-    out = torch.stack(out)
-    var = torch.stack(var)
-    varmax = var.max()
-    varmin = var.min()
-    out = normalize_tensor(out)
-    var = normalize_tensor(var) * (varmax - varmin)
+            for modelo in modelos:
+                modelfile = os.path.join(model, modelo)
+                seg_model = HRNet(config=hypes)
 
-    savename = os.path.join(os.getcwd(), 'figures',
-                            str(hypes['arch']['config']), str(args.thresh),
-                            str('multimodel_' + os.path.splitext(os.path.basename(args.image))[0]))
+                pretrained_dict = torch.load(modelfile, map_location=device)
+                if 'state_dict' in pretrained_dict:
+                    pretrained_dict = pretrained_dict['state_dict']
 
-    os.makedirs(os.path.dirname(savename), mode=0o755, exist_ok=True)
-    fscore = process_images(hypes, savename, image_orig, out, var, args.gt, input_res, threshold=args.thresh,
-                            printout=True)
+                prefix = "module."
+                keys = sorted(pretrained_dict.keys())
+                for key in keys:
+                    if key.startswith(prefix):
+                        newkey = key[len(prefix):]
+                        pretrained_dict[newkey] = pretrained_dict.pop(key)
+                # also strip the prefix in metadata if any.
+                if "_metadata" in pretrained_dict:
+                    metadata = pretrained_dict["_metadata"]
+                    for key in list(metadata.keys()):
+                        if len(key) == 0:
+                            continue
+                        newkey = key[len(prefix):]
+                        metadata[newkey] = metadata.pop(key)
+                seg_model.load_state_dict(pretrained_dict)
+                seg_model.to(device)
+
+                with torch.no_grad():
+                    outDict = seg_model(image)
+                    out.append(outDict['out'].squeeze().detach())
+                    var.append(outDict['logVar'].squeeze().detach())
+
+        out = torch.stack(out)
+        var = torch.stack(var)
+        varmax = var.max()
+        varmin = var.min()
+        out = normalize_tensor(out)
+        var = normalize_tensor(var) * (varmax - varmin)
+
+        savename = os.path.join(os.getcwd(), 'figures',
+                                str(hypes['arch']['config']), str(args.thresh),
+                                str('ensemble'), os.path.splitext(img_name)[0])
+        os.makedirs(os.path.dirname(savename), mode=0o755, exist_ok=True)
+        fscore = process_images(hypes, savename, image_orig, out, var, args.gt, input_res, threshold=args.thresh,
+                                printout=True)
