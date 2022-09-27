@@ -23,17 +23,17 @@ def setup(rank, world_size):
 if __name__ == '__main__':
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    if dist.is_available():
-        setup(0, 1)
+    # if dist.is_available():
+    #     setup(0, 1)
 
     parser = argparse.ArgumentParser(description="Inference on images for Capsule Segmentation (SegCaps)")
     parser.add_argument('--model', type=str, help='Path to directory with model file and hypes.json [required]')
     parser.add_argument('--image', type=str, help='Path to image to run inference on [required]')
     parser.add_argument('--gt', type=str, help='Optional path to ground truth file, will return confusion matrix.')
     parser.add_argument('--target', type=int, default=1, help='Optional target class, default to 0.')
-    parser.add_argument('--n_MC', type=int, default=16, help='Optional number of times to run the image, default 16.')
+    parser.add_argument('--n_MC', type=int, default=1, help='Optional number of times to run the image, default 16.')
     parser.add_argument('--out_res', nargs='+', type=int, default=None, help='Optional output resolution')
-    parser.add_argument('--thresh', type=float, default=None, help='Optional threshold')
+    parser.add_argument('--thresh', type=float, default=0.75, help='Optional threshold')
     parser.add_argument('--factor', type=float, default=None, help='Optional factor')
     args = parser.parse_args()
 
@@ -57,7 +57,6 @@ if __name__ == '__main__':
     class_colors = hypes['data']['class_colours']
     class_labels = hypes['data']['class_labels']
 
-
     input_transforms = transforms.Compose(
         [transforms.Resize(input_res),
         transforms.ToTensor(),
@@ -65,9 +64,9 @@ if __name__ == '__main__':
         ]
     )
 
-    print('image file is ', args.image_dir)
-    if is_image_file(args.image_dir):
-        image_orig = pil_loader(args.image_dir)
+    print('image file is ', args.image)
+    if is_image_file(args.image):
+        image_orig = pil_loader(args.image)
     else:
         RuntimeError('image provided is not a supported image format')
     image = input_transforms(image_orig)
@@ -138,7 +137,7 @@ if __name__ == '__main__':
 
         savename = os.path.join(os.getcwd(), 'figures',
                                 str(hypes['arch']['config']), str(args.thresh),
-                                str(bayesMethod + '_' + os.path.splitext(os.path.basename(args.image_dir))[0]))
+                                str(bayesMethod + '_' + os.path.splitext(os.path.basename(args.image))[0]))
 
         os.makedirs(os.path.dirname(savename), mode=0o755, exist_ok=True)
         fscore = process_images(hypes, savename, image_orig, out, var, args.gt, input_res,
